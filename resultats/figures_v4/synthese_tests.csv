@@ -1,0 +1,10 @@
+﻿,statistique,p_value,significatif_5%
+Surdispersion (Cameron-Trivedi),5.038816426993633,2.3420974497394668e-07,True
+Autocorrelation (Durbin-Watson),1.9198815567122878,,False
+Dispersion de Pearson (reference Poisson),3.624817467789351,,False
+LR Poisson vs NB,947.7379325450238,2.057935202380823e-208,True
+Exces de zeros vs NB (predictif),1.0551482912933738,0.0584,False
+[ZINB] Dispersion de Pearson,1.0675261377922944,,False
+[ZINB] Durbin-Watson,1.9290380684193784,,False
+[ZINB] Ljung-Box lag 28,23.90857347866385,0.686352266541354,False
+[ZINB] Hosmer-Lemeshow (simule),27.392976065524305,0.6035,False
