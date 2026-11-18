@@ -1,0 +1,9 @@
+﻿variable,modalite,n,part_zeros,moyenne
+Vacance,0,936,0.448,1.799
+Vacance,1,380,0.445,1.826
+Jour_De_Garde,0,945,0.443,1.804
+Jour_De_Garde,1,371,0.456,1.814
+Saison_Du_Jour,grande_saison_pluies,378,0.407,2.066
+Saison_Du_Jour,grande_saison_seche,446,0.446,1.767
+Saison_Du_Jour,petite_saison_pluies,270,0.489,1.615
+Saison_Du_Jour,petite_saison_seche,222,0.464,1.68
