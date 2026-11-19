@@ -326,6 +326,29 @@ for n in noms:
     P_tr[n] = P / P.sum(axis=1, keepdims=True)
     P_te[n] = Pt / Pt.sum(axis=1, keepdims=True)
 
+# Tableaux d'effets de chaque modele : comptage (exp(coef) = IRR) et logit (OR)
+for n in noms:
+    m = modeles[n]
+    tab_c = pd.DataFrame({
+        "coef": m["beta"], "exp(coef)": np.exp(m["beta"]),
+        "IC95_inf": np.exp(m["beta"] - 1.96 * m["se_beta"]),
+        "IC95_sup": np.exp(m["beta"] + 1.96 * m["se_beta"]),
+        "p_value": 2 * norm.sf(np.abs(m["beta"] / m["se_beta"])),
+    }, index=X_tr.columns)
+    sfx = n.replace(" ", "_")
+    tab_c.round(4).to_csv(f"{DOSSIER_FIGURES}/effets_comptage_{sfx}.csv", encoding="utf-8-sig")
+    if m["gamma"] is not None:
+        zi_n = n in ("ZIP", "ZINB")
+        tab_l = pd.DataFrame({
+            "coef": m["gamma"], "exp(coef)": np.exp(m["gamma"]),
+            "IC95_inf": np.exp(m["gamma"] - 1.96 * m["se_gamma"]),
+            "IC95_sup": np.exp(m["gamma"] + 1.96 * m["se_gamma"]),
+            "p_value": 2 * norm.sf(np.abs(m["gamma"] / m["se_gamma"])),
+        }, index=Xi_tr.columns if zi_n else X_tr.columns)
+        tab_l.round(4).to_csv(f"{DOSSIER_FIGURES}/effets_logit_{sfx}.csv", encoding="utf-8-sig")
+print(f"\n[Effets] tableaux des six modeles exportes dans {DOSSIER_FIGURES}/ "
+      "(effets_comptage_<modele>.csv + effets_logit_<modele>.csv pour ZIP/ZINB/Hurdles)")
+
 # ==============================================================================
 # 4. COMPARAISON GLOBALE : AIC/BIC, ZEROS, DISPERSION, CRITERES DE VALIDATION
 # ==============================================================================

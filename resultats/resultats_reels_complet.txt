@@ -53,6 +53,8 @@ saison_petite_saison_seche  -0.1937        0.0923  0.1405       0.0358  0.1680
 [OK] Hurdle Poisson (convergence : True)
 [OK] Hurdle NB (convergence : True)
 
+[Effets] tableaux des six modeles exportes dans figures_v4/ (effets_comptage_<modele>.csv + effets_logit_<modele>.csv pour ZIP/ZINB/Hurdles)
+
 === 4. Comparaison des modeles ===
                   converge   k    LogLik       AIC       BIC  zeros_obs  zeros_attendus  ratio_obs_att  disp_Pearson  pi_inflation_moyen  MAE_test  RMSE_test  logscore_test  Brier_P0_test  degenere
 modele                                                                                                                                                                                               
