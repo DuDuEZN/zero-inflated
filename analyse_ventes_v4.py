@@ -164,6 +164,10 @@ X_vif = sm.add_constant(df[VARIABLES_EXPLICATIVES].astype(float), has_constant="
 vif = pd.Series([variance_inflation_factor(X_vif.values, i) for i in range(1, X_vif.shape[1])],
                 index=VARIABLES_EXPLICATIVES)
 print("\n=== 2. Colinearite et Poisson de reference ===")
+tab_vif = pd.DataFrame({"VIF": vif, "tolerance": 1 / vif}).sort_values("VIF", ascending=False)
+tab_vif.loc["VIF moyen"] = [tab_vif["VIF"].mean(), np.nan]
+print(tab_vif.round(3).to_string())
+tab_vif.round(3).to_csv(f"{DOSSIER_FIGURES}/vif_variables.csv", encoding="utf-8-sig")
 print("VIF > 10 :", vif[vif > 10].round(1).to_dict() if (vif > 10).any() else "aucune variable")
 
 glm_pois = sm.GLM(y_tr, X_tr, family=sm.families.Poisson()).fit()

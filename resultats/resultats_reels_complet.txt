@@ -6,6 +6,21 @@ Zeros observes = 44.7% | attendus sous Poisson(1.81) = 16.4%
 Train = 1052 | Test = 264 (coupure : 2025-04-12) | max = 24, troncature PMF K = 78
 
 === 2. Colinearite et Poisson de reference ===
+                               VIF  tolerance
+samedi                       4.606      0.217
+jeudi                        4.604      0.217
+vendredi                     4.604      0.217
+lundi                        4.594      0.218
+mardi                        4.592      0.218
+mercredi                     4.591      0.218
+Temperature_Journaliere      2.582      0.387
+saison_petite_saison_seche   2.354      0.425
+saison_grande_saison_seche   1.696      0.590
+saison_petite_saison_pluies  1.629      0.614
+Vacance                      1.475      0.678
+Precipitation_Journaliere    1.372      0.729
+Jour_De_Garde                1.122      0.891
+VIF moyen                    3.063        NaN
 VIF > 10 : aucune variable
 Dispersion de Pearson (Poisson) : 3.625  (>1 : surdispersion)
 Cameron-Trivedi (unilateral)    : t = 5.039, p = 2.342e-07  -> surdispersion confirmee
