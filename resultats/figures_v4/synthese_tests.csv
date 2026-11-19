@@ -1,4 +1,5 @@
 ﻿,statistique,p_value,significatif_5%
+"Exces de zeros (Van den Broeck, chi2)",937.7598267079936,6.073979387571582e-206,True
 Surdispersion (Cameron-Trivedi),5.038816426993633,2.3420974497394668e-07,True
 Autocorrelation (Durbin-Watson),1.9198815567122878,,False
 Dispersion de Pearson (reference Poisson),3.624817467789351,,False

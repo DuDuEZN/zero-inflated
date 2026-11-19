@@ -9,6 +9,8 @@ Train = 1052 | Test = 264 (coupure : 2025-04-12) | max = 24, troncature PMF K = 
 VIF > 10 : aucune variable
 Dispersion de Pearson (Poisson) : 3.625  (>1 : surdispersion)
 Cameron-Trivedi (unilateral)    : t = 5.039, p = 2.342e-07  -> surdispersion confirmee
+Zeros observes vs attendus      : 476 vs 185.4  (ratio 2.57)
+Van den Broeck (exces de zeros) : chi2 = 937.76, p = 6.074e-206  -> exces de zeros contre la Poisson  [preliminaire : ne distingue pas l'exces de zeros de la surdispersion ; le test decisif est fait contre la NB, cf. section 6]
 Durbin-Watson (residus Pearson) : 1.920  (2 = pas d'autocorrelation d'ordre 1)
 
 Poisson : erreurs-types classiques vs HAC (maxlag = PERIODE)
@@ -118,6 +120,7 @@ Indisponible : la colonne jour_ferie est absente de la base. Action recommandee 
 
 === Synthese des tests ===
                                            statistique  p_value  significatif_5%
+Exces de zeros (Van den Broeck, chi2)         937.7598   0.0000             True
 Surdispersion (Cameron-Trivedi)                 5.0388   0.0000             True
 Autocorrelation (Durbin-Watson)                 1.9199      NaN            False
 Dispersion de Pearson (reference Poisson)       3.6248      NaN            False

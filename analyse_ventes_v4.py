@@ -179,9 +179,23 @@ t_ct, p_ct = float(aux_ct.tvalues[0]), float(norm.sf(aux_ct.tvalues[0]))
 
 dw_p = durbin_watson(pearson_p)
 
+# Van den Broeck (1995), generalise au cas de regression (p0_i = exp(-mu_i), mu_i ajuste par le GLM) :
+# score de l'exces de zeros contre la Poisson ; terme correctif - mu_i*p0_i^2 car mu est estime
+p0_p = np.exp(-mu_p)
+num_vdb = float((int((y_tr == 0).sum()) - float(np.sum(p0_p))) ** 2)
+den_vdb = float(np.sum(p0_p * (1 - p0_p) - mu_p * p0_p ** 2))
+stat_vdb = num_vdb / den_vdb if den_vdb > 0 else np.nan
+p_vdb = float(chi2.sf(stat_vdb, 1)) if np.isfinite(stat_vdb) else np.nan
+
 print(f"Dispersion de Pearson (Poisson) : {disp_p:.3f}  (>1 : surdispersion)")
 print(f"Cameron-Trivedi (unilateral)    : t = {t_ct:.3f}, p = {p_ct:.4g}  -> "
       f"{'surdispersion confirmee' if p_ct < ALPHA else 'Poisson acceptable'}")
+obs_zeros, att_zeros = int((y_tr == 0).sum()), float(np.sum(p0_p))
+print(f"Zeros observes vs attendus      : {obs_zeros} vs {att_zeros:.1f}  (ratio {obs_zeros / att_zeros:.2f})")
+print(f"Van den Broeck (exces de zeros) : chi2 = {stat_vdb:.2f}, p = {p_vdb:.4g}  -> "
+      f"{'exces de zeros contre la Poisson' if p_vdb < ALPHA else 'pas d exces de zeros detecte'}"
+      "  [preliminaire : ne distingue pas l'exces de zeros de la surdispersion ; "
+      "le test decisif est fait contre la NB, cf. section 6]")
 print(f"Durbin-Watson (residus Pearson) : {dw_p:.3f}  (2 = pas d'autocorrelation d'ordre 1)")
 
 glm_hac = sm.GLM(y_tr, X_tr, family=sm.families.Poisson()).fit(
@@ -195,6 +209,7 @@ print(tab_se.round(4).to_string())
 tab_se.to_csv(f"{DOSSIER_FIGURES}/poisson_se_classique_vs_hac.csv", encoding="utf-8-sig")
 
 tests = {}
+tests["Exces de zeros (Van den Broeck, chi2)"] = (stat_vdb, p_vdb)
 tests["Surdispersion (Cameron-Trivedi)"] = (t_ct, p_ct)
 tests["Autocorrelation (Durbin-Watson)"] = (dw_p, np.nan)
 tests["Dispersion de Pearson (reference Poisson)"] = (disp_p, np.nan)
