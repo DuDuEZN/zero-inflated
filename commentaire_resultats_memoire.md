@@ -143,6 +143,18 @@ Test prédictif de calibrage à la Gelman et al. (1996), H0 = « les données pr
 
 ---
 
+## 7bis. Validation croisée chronologique du ZINB (fenêtre élargissante, 4 replis d'évaluation)
+
+| Repli | n entraînement | n validation | logscore ZINB | logscore NB | Δ logscore | Brier P(Y=0) ZINB | MAE ZINB | Zéros obs / att. |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 210 | 210 | −1,955 | −1,917 | −0,038 | 0,233 | 2,059 | 96 / 91,6 |
+| 2 | 420 | 211 | −1,830 | −1,911 | +0,081 | 0,255 | 1,996 | 98 / 92,0 |
+| 3 | 631 | 210 | −1,653 | −1,690 | +0,038 | 0,250 | 1,692 | 103 / 91,8 |
+| 4 | 841 | 211 | −1,815 | −1,837 | +0,023 | 0,237 | 1,756 | 87 / 99,7 |
+| **Moyenne ± é-t** | | | **−1,813 ± 0,124** | **−1,839 ± 0,106** | **+0,026** | **0,243 ± 0,010** | **1,876 ± 0,179** | |
+
+Commentaire proposé. La chronologie interdisant un découpage aléatoire, la validation croisée est menée en fenêtre élargissante : chaque repli entraîne sur tous les blocs antérieurs et valide sur le bloc suivant — elle mime le déploiement prédictif réel de l'outil de réapprovisionnement. Trois enseignements. (i) **La supériorité du ZINB sur la NB se généralise** : il domine la NB en logscore sur 3 replis sur 4 (Δ moyen +0,026) et sur le Brier du zéro sur les 4 replis (0,243 contre 0,247) ; le repli 1, entraîné sur seulement 210 jours, est le seul où la NB tient tête — avec si peu d'observations, l'équation d'inflation est mal identifiée, ce qui est cohérent avec un apprentissage de la structure des zéros qui exige du volume. (ii) **La stabilité de l'effet dominical est satisfaisante** : l'OR du dimanche dans l'équation d'inflation reste compris entre 4,7 et 17,6 selon les replis, et de l'ordre de 11–17 dès que l'échantillon d'entraînement dépasse 420 jours — la variabilité du repli 1 confirme qu'il s'agit d'une limite de taille d'échantillon, non d'une instabilité du phénomène. (iii) **La calibration en loi est préservée hors échantillons successifs** : le PIT randomisé agrégé sur les 4 replis a une moyenne de 0,489 (attendu 0,5) et un écart-type de 0,293 (attendu 0,289) — la loi prédictive reste fiable pour une utilisation décisionnelle, non seulement sur la coupe train/test unique mais tout au long du déploiement temporel. On notera enfin que le décompte de zéros attendus du ZINB suit bien les zéros observés (91,6–99,7 attendus contre 87–103 observés), y compris sur les replis récents.
+
 ## 8. Traduction opérationnelle : point de commande au niveau de service
 
 - Horizon de réapprovisionnement L = 7 jours ; niveau de service cible 95 %.

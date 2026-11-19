@@ -20,9 +20,12 @@ Protocole :
   5. Tests de Vuong (corriges AIC) uniquement sur les paires NON emboitees
   6. Evaluation en distribution : logscore, Brier sur P(Y=0), PIT randomise
   7. Benchmarks Croston et SBA (Croston 1972 ; Syntetos & Boylan 2005)
-  8. Point de commande au niveau de service cible : quantile de la demande
+  8. Validation croisee chronologique du modele retenu (fenetre elargissante
+     sur 5 blocs, 4 replis d'evaluation ; NB en reference) : logscore, Brier
+     P(Y=0), MAE, RMSE, PIT
+  9. Point de commande au niveau de service cible : quantile de la demande
      cumulee sur l'horizon L (convolution des lois predictives quotidiennes)
-  9. Analyse de sensibilite : exclusion des jours feries
+ 10. Analyse de sensibilite : exclusion des jours feries
 ================================================================================
 """
 
@@ -42,7 +45,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.stats.stattools import durbin_watson
 from statsmodels.graphics.tsaplots import plot_acf
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 warnings.filterwarnings("ignore")
 
@@ -657,10 +660,98 @@ print("Croston/SBA ne fournissent pas de loi predictive complete : seuls MAE/RMS
 tab_perf.to_csv(f"{DOSSIER_FIGURES}/performance_test_benchmarks.csv", encoding="utf-8-sig")
 
 # ==============================================================================
-# 9. POINT DE COMMANDE AU NIVEAU DE SERVICE (reponse a la question decisionnelle)
+# 9. VALIDATION CROISEE DU MODELE RETENU : FENETRE ELARGISSANTE, 5 REPLIS
+# ==============================================================================
+# La chronologie interdit une validation croisee aleatoire : le repli j entraine
+# sur les blocs 0..j-1 et valide sur le bloc j (apprentissage en avant). La NB
+# est ajustee sur les memes replis comme module de reference ; la stability du
+# OR du dimanche (equation d'inflation) est egalement rejetee repli par repli.
+
+N_BLOCS = 5
+bords = [int(i * len(y_tr) / N_BLOCS) for i in range(N_BLOCS + 1)]
+bords[-1] = len(y_tr)
+col_dim = list(Xi_tr.columns).index("dimanche")
+rng_cv = np.random.default_rng(RANDOM_STATE + 1)
+lignes_cv, pit_cv, or_dim_cv = [], [], []
+for j in range(1, N_BLOCS):
+    i_tr, i_va = np.arange(0, bords[j]), np.arange(bords[j], bords[j + 1])
+    Xj_tr, Xj_va = X_tr.iloc[i_tr], X_tr.iloc[i_va]
+    Xij_tr, Xij_va = Xi_tr.iloc[i_tr], Xi_tr.iloc[i_va]
+    yj_tr, yj_va = y_tr[i_tr], y_tr[i_va]
+
+    sp = ZeroInflatedPoisson(yj_tr, Xj_tr, exog_infl=Xij_tr,
+                             inflation="logit").fit(disp=0, maxiter=500)
+    r_z = ZeroInflatedNegativeBinomialP(yj_tr, Xj_tr, exog_infl=Xij_tr,
+                                        inflation="logit", p=2).fit(
+        disp=0, maxiter=2000, method="lbfgs",
+        start_params=np.append(np.asarray(sp.params), 0.1))
+    pz = np.asarray(r_z.params)
+    ki = Xij_tr.shape[1]
+    gam_z, bet_z = pz[:ki], pz[ki:-1]
+    al_z = max(float(pz[-1]), 1e-8)
+    or_dim_cv.append(float(np.exp(gam_z[col_dim])))
+
+    glm_cv = sm.GLM(yj_tr, Xj_tr, family=sm.families.Poisson()).fit()
+    r_n = NegativeBinomial(yj_tr, Xj_tr, loglike_method="nb2").fit(
+        disp=0, maxiter=2000, method="lbfgs",
+        start_params=np.append(np.asarray(glm_cv.params), 0.1))
+    bet_n, al_n = np.asarray(r_n.params)[:-1], max(float(np.asarray(r_n.params)[-1]), 1e-8)
+
+    Xv, Xiv = np.asarray(Xj_va, dtype=float), np.asarray(Xij_va, dtype=float)
+    yv = yj_va.astype(int)
+    k_ax = np.arange(K)[None, :]
+    mu_z = np.exp(Xv @ bet_z)
+    pi_z = (1 / (1 + np.exp(-(Xiv @ gam_z))))[:, None]
+    fz = nbinom.pmf(k_ax, 1 / al_z, 1 / (1 + al_z * mu_z[:, None]))
+    Pz = (1 - pi_z) * fz
+    Pz[:, [0]] += pi_z
+    fn = nbinom.pmf(k_ax, 1 / al_n,
+                    1 / (1 + al_n * np.exp(Xv @ bet_n)[:, None]))
+
+    idx_va = np.arange(len(yv))
+    ls_z = np.mean(np.log(np.clip(Pz[idx_va, np.minimum(yv, K - 1)], 1e-12, None)))
+    ls_n = np.mean(np.log(np.clip(fn[idx_va, np.minimum(yv, K - 1)], 1e-12, None)))
+    mz_z = ((1 - pi_z[:, 0]) * mu_z)
+    mz_n = np.exp(Xv @ bet_n)
+    a_pt = np.where(yv == 0, 0.0, np.cumsum(Pz, axis=1)[idx_va, np.maximum(yv - 1, 0)])
+    b_pt = np.cumsum(Pz, axis=1)[idx_va, np.minimum(yv, K - 1)]
+    pit_cv.extend(rng_cv.uniform(a_pt, b_pt))
+    lignes_cv.append({
+        "repli": j, "n_train": len(i_tr), "n_val": len(i_va),
+        "logscore_ZINB": ls_z, "logscore_NB": ls_n, "delta_logscore": ls_z - ls_n,
+        "Brier_P0_ZINB": np.mean(((yv == 0).astype(float) - Pz[:, 0]) ** 2),
+        "Brier_P0_NB": np.mean(((yv == 0).astype(float) - fn[:, 0]) ** 2),
+        "MAE_ZINB": mean_absolute_error(yv, mz_z), "MAE_NB": mean_absolute_error(yv, mz_n),
+        "RMSE_ZINB": np.sqrt(mean_squared_error(yv, mz_z)),
+        "RMSE_NB": np.sqrt(mean_squared_error(yv, mz_n)),
+        "zeros_obs": int((yv == 0).sum()), "zeros_att_ZINB": float(Pz[:, 0].sum()),
+        "converge_ZINB": bool(getattr(r_z, "mle_retvals", {}).get("converged", True)),
+    })
+
+tab_cv = pd.DataFrame(lignes_cv)
+print(f"\n=== 9. Validation croisee : fenetre elargissante sur {N_BLOCS} blocs "
+      f"({N_BLOCS - 1} replis d'evaluation) : ZINB vs NB ===")
+print(tab_cv.round(4).to_string(index=False))
+tab_cv.round(4).to_csv(f"{DOSSIER_FIGURES}/validation_croisee.csv", index=False, encoding="utf-8-sig")
+
+syn_cv = tab_cv[["logscore_ZINB", "logscore_NB", "Brier_P0_ZINB", "Brier_P0_NB",
+                 "MAE_ZINB", "MAE_NB", "RMSE_ZINB", "RMSE_NB"]].agg(["mean", "std"])
+print("\nMoyennes et ecarts-types inter-replis :")
+print(syn_cv.round(4).to_string())
+print(f"Replis ou ZINB domine la NB en logscore : {(tab_cv['delta_logscore'] > 0).sum()} / {N_BLOCS - 1} "
+      f"(delta moyen = {tab_cv['delta_logscore'].mean():.4f})")
+print(f"OR du dimanche (inflation) par repli : {np.round(or_dim_cv, 2).tolist()} "
+      f"(min-max : {min(or_dim_cv):.2f} - {max(or_dim_cv):.2f})")
+pit_cv = np.asarray(pit_cv)
+print(f"PIT randomise agrgie : moyenne = {pit_cv.mean():.4f} (attendu 0,5) | "
+      f"ecart-type = {pit_cv.std():.4f} (attendu {1 / np.sqrt(12):.4f})")
+syn_cv.round(4).to_csv(f"{DOSSIER_FIGURES}/validation_croisee_synthese.csv", encoding="utf-8-sig")
+
+# ==============================================================================
+# 10. POINT DE COMMANDE AU NIVEAU DE SERVICE (reponse a la question decisionnelle)
 # ==============================================================================
 
-print(f"\n=== 9. Point de commande : horizon L = {LEAD_TIME} jours, "
+print(f"\n=== 10. Point de commande : horizon L = {LEAD_TIME} jours, "
       f"niveau de service = {NIVEAU_SERVICE:.0%} ===")
 # Demande cumulee sur L jours : convolution des lois predictives quotidiennes
 # (independance conditionnelle des jours au vu des covariables observees ;
@@ -696,16 +787,16 @@ plt.show()
 plt.close()
 
 # ==============================================================================
-# 10. ANALYSE DE SENSIBILITE : EXCLUSION DES JOURS FERIES
+# 11. ANALYSE DE SENSIBILITE : EXCLUSION DES JOURS FERIES
 # ==============================================================================
 
-print("\n=== 10. Analyse de sensibilite : exclusion des jours feries ===")
+print("\n=== 11. Analyse de sensibilite : exclusion des jours feries ===")
 mask_tr = d_tr["jour_ferie"].values == 0 if "jour_ferie" in d_tr.columns else None
 if mask_tr is None:
     print("Indisponible : la colonne jour_ferie est absente de la base. "
           "Action recommandee : faire trier par l'officine la liste des jours "
           "effectivement fermes (fetes legales) pour qualifier la population "
-          "ouverte et les zerosStructurels associes.")
+          "ouverte et les zeros structurels associes.")
 elif mask_tr.sum() > 30:
     # jour_ferie est constant une fois les feries exclus : colonne vide a retirer
     vars_sens = [c for c in VARIABLES_EXPLICATIVES if c != "jour_ferie"]
