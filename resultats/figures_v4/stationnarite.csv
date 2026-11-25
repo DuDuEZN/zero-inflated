@@ -1,0 +1,5 @@
+﻿,statistique,p_value,retards,H0,conclusion
+ADF (serie brute),-34.699,0.0,0,racine unitaire,stationnaire en niveau
+ADF (corrigee jour de semaine),-34.7205,0.0,0,racine unitaire,stationnaire en niveau
+KPSS (serie brute),0.2712,0.1,5,stationnarite,stationnarite non rejetee
+KPSS (corrigee jour de semaine),0.2687,0.1,6,stationnarite,stationnarite non rejetee

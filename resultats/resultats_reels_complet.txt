@@ -22,6 +22,13 @@ Precipitation_Journaliere    1.372      0.729
 Jour_De_Garde                1.122      0.891
 VIF moyen                    3.063        NaN
 VIF > 10 : aucune variable
+
+Stationnarite de la serie journaliere (n = 1316) :
+                                 statistique  p_value  retards               H0                 conclusion
+ADF (serie brute)                   -34.6990      0.0        0  racine unitaire     stationnaire en niveau
+ADF (corrigee jour de semaine)      -34.7205      0.0        0  racine unitaire     stationnaire en niveau
+KPSS (serie brute)                    0.2712      0.1        5    stationnarite  stationnarite non rejetee
+KPSS (corrigee jour de semaine)       0.2687      0.1        6    stationnarite  stationnarite non rejetee
 Dispersion de Pearson (Poisson) : 3.625  (>1 : surdispersion)
 Cameron-Trivedi (unilateral)    : t = 5.039, p = 2.342e-07  -> surdispersion confirmee
 Zeros observes vs attendus      : 476 vs 185.4  (ratio 2.57)
@@ -152,6 +159,8 @@ Indisponible : la colonne jour_ferie est absente de la base. Action recommandee 
 
 === Synthese des tests ===
                                            statistique  p_value  significatif_5%
+Stationnarite ADF (serie brute)               -34.6990   0.0000             True
+Stationnarite KPSS (serie brute)                0.2712   0.1000            False
 Exces de zeros (Van den Broeck, chi2)         937.7598   0.0000             True
 Surdispersion (Cameron-Trivedi)                 5.0388   0.0000             True
 Autocorrelation (Durbin-Watson)                 1.9199      NaN            False

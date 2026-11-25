@@ -12,7 +12,8 @@ modeles compounds) et font l'objet d'une analyse de sensibilite (section 10).
 Protocole :
   1. Exploration et partition chronologique train/test (80/20)
   2. Reference Poisson : VIF, surdispersion (Cameron & Trivedi 1990),
-     autocorrelation (Durbin-Watson), erreurs-types HAC
+     autocorrelation (Durbin-Watson), stationnarite (ADF ; KPSS),
+     erreurs-types HAC
   3. Six modeles a armes egales : Poisson, Binomiale Negative (NB2), ZIP, ZINB,
      Hurdle Poisson, Hurdle NB (logit sur P(Y>0) + comptage tronque a zero)
   4. Exces de zeros teste CONTRE le modele NB (test predictif Monte-Carlo),
@@ -42,6 +43,7 @@ from statsmodels.discrete.discrete_model import Poisson, NegativeBinomial, Logit
 from statsmodels.discrete.count_model import ZeroInflatedPoisson, ZeroInflatedNegativeBinomialP
 from statsmodels.discrete.truncated_model import TruncatedLFPoisson, TruncatedLFNegativeBinomialP
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tsa.stattools import adfuller, kpss
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.stats.stattools import durbin_watson
 from statsmodels.graphics.tsaplots import plot_acf
@@ -186,6 +188,31 @@ t_ct, p_ct = float(aux_ct.tvalues[0]), float(norm.sf(aux_ct.tvalues[0]))
 
 dw_p = durbin_watson(pearson_p)
 
+# Stationnarite de la serie journaliere : ADF (H0 : racine unitaire) et
+# KPSS (H0 : stationnarite autour d'une constante), sur la serie brute
+# puis sur la serie corrigee de l'effet jour de la semaine
+y_brut_ts = df[VARIABLE_CIBLE].astype(int).values
+y_corr_ts = (df["Y"] - df["Y"].groupby(df["date"].dt.day_of_week).transform("mean")).values
+adf_b = adfuller(y_brut_ts, regression="c", autolag="AIC")
+adf_c = adfuller(y_corr_ts, regression="c", autolag="AIC")
+kp_b = kpss(y_brut_ts, regression="c", nlags="auto")
+kp_c = kpss(y_corr_ts, regression="c", nlags="auto")
+tab_stat = pd.DataFrame({
+    "statistique": [adf_b[0], adf_c[0], kp_b[0], kp_c[0]],
+    "p_value": [adf_b[1], adf_c[1], kp_b[1], kp_c[1]],
+    "retards": [adf_b[2], adf_c[2], int(kp_b[2]), int(kp_c[2])],
+    "H0": ["racine unitaire", "racine unitaire", "stationnarite", "stationnarite"],
+    "conclusion": ["stationnaire en niveau" if p < ALPHA else "racine unitaire non rejetee"
+                   for p in (adf_b[1], adf_c[1])] +
+                  ["stationnarite non rejetee" if p > ALPHA else "stationnarite rejetee"
+                   for p in (kp_b[1], kp_c[1])],
+}, index=["ADF (serie brute)", "ADF (corrigee jour de semaine)",
+          "KPSS (serie brute)", "KPSS (corrigee jour de semaine)"])
+print("\nStationnarite de la serie journaliere (n = %d) :" % len(y_brut_ts))
+print(tab_stat.round(4).to_string())
+tab_stat.round(4).to_csv(f"{DOSSIER_FIGURES}/stationnarite.csv", encoding="utf-8-sig")
+
+
 # Van den Broeck (1995), generalise au cas de regression (p0_i = exp(-mu_i), mu_i ajuste par le GLM) :
 # score de l'exces de zeros contre la Poisson ; terme correctif - mu_i*p0_i^2 car mu est estime
 p0_p = np.exp(-mu_p)
@@ -216,6 +243,8 @@ print(tab_se.round(4).to_string())
 tab_se.to_csv(f"{DOSSIER_FIGURES}/poisson_se_classique_vs_hac.csv", encoding="utf-8-sig")
 
 tests = {}
+tests["Stationnarite ADF (serie brute)"] = (adf_b[0], adf_b[1])
+tests["Stationnarite KPSS (serie brute)"] = (kp_b[0], kp_b[1])
 tests["Exces de zeros (Van den Broeck, chi2)"] = (stat_vdb, p_vdb)
 tests["Surdispersion (Cameron-Trivedi)"] = (t_ct, p_ct)
 tests["Autocorrelation (Durbin-Watson)"] = (dw_p, np.nan)
